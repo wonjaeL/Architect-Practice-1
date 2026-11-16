@@ -5,9 +5,9 @@
     "grade": {
       "run_id": "20261116-070516-808874-a0c457ec",
       "participant": "audit-e2e-20261116",
-      "artifact_blob": "0a5c853c621902478dcbc64a8f9f0f3db72aaa57",
+      "artifact_blob": "fd1a4ecabfad8910599eddff13a3cbb973d7c42d",
       "grader": "practice1-policy-v1-7a9af2cf76cb",
-      "graded_at": "2026-11-16T07:18:16.770166+00:00",
+      "graded_at": "2026-11-16T07:35:30.096470+00:00",
       "status": "passed",
       "source_sha256": "57982d7db31a000bf853ab5e7c6c1359f3744aea770f2d356402bd823ea158dc",
       "checks": {
@@ -44,7 +44,7 @@
     },
     "condition_id": "3f4bb9fd7f5a6033c9db4e2ccc0ea28eceaff5195bdfab56a1d7d2ddfcf601e6",
     "execution_status": "completed",
-    "comparison_valid": false,
+    "comparison_valid": true,
     "techniques": [],
     "note": "",
     "usage": {
@@ -59,9 +59,9 @@
     "grade": {
       "run_id": "20261116-071520-379320-e3798d35",
       "participant": "audit-e2e-20261116",
-      "artifact_blob": "8600e6620f7536d801d5bd33bea0bd5b51f641a8",
+      "artifact_blob": "df75bf5693004cc06548f28a5d167dbc05d27e71",
       "grader": "practice1-policy-v1-7a9af2cf76cb",
-      "graded_at": "2026-11-16T07:21:38.181670+00:00",
+      "graded_at": "2026-11-16T07:35:33.420187+00:00",
       "status": "passed",
       "source_sha256": "93ef9cf719544afc9999c5e609dc5b3ec19a2042b8f3caf4559922ab3ee7a189",
       "checks": {
@@ -99,7 +99,7 @@
     },
     "condition_id": "a26c21fbe4bd7aebfa8a2158809340440b9d3ba17a458ba045cd4ab7fe6b5c7b",
     "execution_status": "completed",
-    "comparison_valid": false,
+    "comparison_valid": true,
     "techniques": [],
     "note": "",
     "usage": {
@@ -114,9 +114,9 @@
     "grade": {
       "run_id": "20261116-072217-068613-1bd88e62",
       "participant": "audit-e2e-20261116",
-      "artifact_blob": "33e7a9ff33c7b6ca4c2c248b2e7633b9e9491c71",
+      "artifact_blob": "cc163a361c69288bc16527e702668a60b2f76e8e",
       "grader": "practice1-policy-v1-7a9af2cf76cb",
-      "graded_at": "2026-11-16T07:27:17.400544+00:00",
+      "graded_at": "2026-11-16T07:35:36.500706+00:00",
       "status": "passed",
       "source_sha256": "f2595ca22ea2f9d267e32b3a90b157af307eb7ecf7a420761e90c3b4fd52d53b",
       "checks": {
@@ -154,7 +154,7 @@
     },
     "condition_id": "a26c21fbe4bd7aebfa8a2158809340440b9d3ba17a458ba045cd4ab7fe6b5c7b",
     "execution_status": "completed",
-    "comparison_valid": false,
+    "comparison_valid": true,
     "techniques": [],
     "note": "",
     "usage": {
@@ -169,9 +169,9 @@
     "grade": {
       "run_id": "20261116-072804-903253-a7a4293c",
       "participant": "audit-e2e-20261116",
-      "artifact_blob": "5765d9e13f47c1b1dfeecb1536ed0ccbc31b134b",
+      "artifact_blob": "0f21ba713bca4b4e93b5e9d56f65e98be7bebfa3",
       "grader": "practice1-policy-v1-7a9af2cf76cb",
-      "graded_at": "2026-11-16T07:34:35.257419+00:00",
+      "graded_at": "2026-11-16T07:35:39.551059+00:00",
       "status": "passed",
       "source_sha256": "5a9f78156c7e9e139358c9f4c5a7153dd364b647931c012cce24921f465ff06f",
       "checks": {
@@ -209,7 +209,7 @@
     },
     "condition_id": "a26c21fbe4bd7aebfa8a2158809340440b9d3ba17a458ba045cd4ab7fe6b5c7b",
     "execution_status": "completed",
-    "comparison_valid": false,
+    "comparison_valid": true,
     "techniques": [
       "테스트 출력 줄이기",
       "작업별 라우팅"

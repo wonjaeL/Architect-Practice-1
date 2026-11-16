@@ -1,0 +1,25 @@
+{
+  "run_id": "20261116-072804-903253-a7a4293c",
+  "participant": "audit-e2e-20261116",
+  "artifact_blob": "e2429ebccc74e36215776cda40ab3ca76533e7d4",
+  "grader": "practice1-policy-v1-7a9af2cf76cb",
+  "graded_at": "2026-11-16T07:33:42.831070+00:00",
+  "status": "passed",
+  "source_sha256": "5a9f78156c7e9e139358c9f4c5a7153dd364b647931c012cce24921f465ff06f",
+  "checks": {
+    "tests": {
+      "passed": true,
+      "tests": 110
+    },
+    "submitted_tests": {
+      "passed": true,
+      "tests": 152
+    },
+    "policy": {
+      "passed": true,
+      "tests": 24,
+      "passed_count": 24,
+      "failures": []
+    }
+  }
+}

@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -102,6 +103,18 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(summary["conditions"]["reasoning_effort"], "high")
         self.assertEqual(summary["grade"]["status"], "pending")
         self.assertTrue((self.root / "submissions" / (folder.name + ".zip")).is_file())
+
+    def test_direct_venv_invocation_passes_python_tools_without_shell_activation(self):
+        # A bare PATH reproduces the real rehearsal's missing pytest/python issue.
+        with (
+            patch.dict(os.environ, {"PATH": "/usr/bin:/bin"}),
+            patch.object(runner, "run_process", wraps=runner.run_process) as process,
+        ):
+            self.execute("changed")
+        env = process.call_args.kwargs.get("env") or process.call_args.args[-1]
+        self.assertEqual(
+            Path(shutil.which("python", path=env["PATH"])), Path(sys.executable)
+        )
 
     def test_process_failure_keeps_logs_without_creating_a_submission(self):
         folder, summary = self.execute("failed")

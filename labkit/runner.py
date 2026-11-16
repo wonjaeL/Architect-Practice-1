@@ -178,6 +178,7 @@ def prepare_run(root: Path, variant: str, cfg: dict) -> tuple[Path, dict]:
         "reasoning_effort": cfg.get("reasoning_effort"),
         "codex_command": cfg["codex_command"],
         "timeout_seconds": cfg["timeout_seconds"],
+        "python_version": sys.version.split()[0],
     }
     summary = {
         "schema": 1,
@@ -418,9 +419,21 @@ def execute(root: Path, variant: str, cfg: dict, *, prechecked: bool = False) ->
             ]
         command.append("-")
         env = dict(os.environ)
+        # lab.py may be invoked by its venv Python without shell activation.
+        # Codex's shell snapshot must inherit the same interpreter and tools.
+        env["PATH"] = (
+            str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
+        )
+        if sys.prefix != sys.base_prefix:
+            env["VIRTUAL_ENV"] = sys.prefix
         # Use the user's Codex account session, not a direct model API key.
         env.pop("OPENAI_API_KEY", None)
         env.pop("CODEX_API_KEY", None)
+        print(
+            f"{LABELS[variant]} 실행 중 · 최대 {cfg['timeout_seconds'] // 60}분",
+            flush=True,
+        )
+        print("진행 로그:", folder / "events.jsonl", flush=True)
         code = run_process(
             command,
             folder / "workspace",

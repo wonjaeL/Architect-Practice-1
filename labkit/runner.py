@@ -47,6 +47,15 @@ def protected_files(workspace: Path) -> dict:
     paths = set(workspace.rglob("AGENTS*.md"))
     for name in ["data", "docs", ".agents/skills"]:
         paths.update((workspace / name).rglob("*"))
+    # The project requires CLI docs and ADR updates when implementing a feature.
+    # Those are deliverables; operating rules and other supplied context stay fixed.
+    mutable_docs = (workspace / "docs/api", workspace / "docs/architecture")
+    paths = {
+        p
+        for p in paths
+        if not any(p.is_relative_to(directory) for directory in mutable_docs)
+        or p.name.startswith("AGENTS")
+    }
     paths.add(workspace / "tools/test_summary.py")
     return {
         p.relative_to(workspace).as_posix(): digest(p)
@@ -534,7 +543,7 @@ def doctor(
     cfg = config(root) if cfg is None else cfg
     checks = execution_checks(root, cfg, include_login=include_login)
     if submission:
-        from .github_flow import check_submission_ready
+        from .github_flow import check_results_ready, check_submission_ready
 
         try:
             check_submission_ready(root, cfg, require_enrollment=False)
@@ -546,6 +555,18 @@ def doctor(
                     False,
                     str(error),
                     "Git 인증·제출자 정보와 저장소 참여 설정을 확인하세요.",
+                )
+            )
+        try:
+            check_results_ready(root, cfg)
+            checks.append(Check("Git 채점 결과 수신 경로", True))
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            checks.append(
+                Check(
+                    "Git 채점 결과 수신 경로",
+                    False,
+                    str(error),
+                    "강사가 Actions의 Grade practice submissions를 먼저 실행해야 합니다.",
                 )
             )
     for check in checks:

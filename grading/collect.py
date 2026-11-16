@@ -22,7 +22,20 @@ from labkit.common import digest, extract_zip, read_json, source_digest, write_j
 from labkit.report import eligible
 
 ROOT = Path(__file__).resolve().parents[1]
-GRADER = "practice1-policy-v1"
+GRADER = (
+    "practice1-policy-v1-"
+    + hashlib.sha256(
+        b"".join(
+            (ROOT / "grading" / name).read_bytes()
+            for name in (
+                "collect.py",
+                "check_submission.py",
+                "coupon_checks.py",
+                "Dockerfile",
+            )
+        )
+    ).hexdigest()[:12]
+)
 SAFE_ID = re.compile(r"[a-zA-Z0-9_-]{1,80}\Z")
 
 
@@ -197,6 +210,14 @@ def grade(participant: str, run_id: str, blob: str, raw: bytes) -> dict:
 def render(records: list[dict], output: Path) -> None:
     records.sort(key=lambda r: (r["participant"], r["id"]))
     write_json(output / "data.json", records)
+    write_json(
+        output / "service.json",
+        {
+            "schema": 1,
+            "grader": GRADER,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
     rows = []
 
     def esc(value):

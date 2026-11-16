@@ -8,6 +8,7 @@ from pathlib import Path
 
 from labkit.common import source_digest, write_json
 from labkit.github_flow import (
+    check_results_ready,
     check_submission_ready,
     enroll,
     fetch_results,
@@ -137,6 +138,21 @@ class GitWorkflowTests(unittest.TestCase):
                 {**self.cfg, "repository": "https://github.com/other/course.git"},
                 "p01",
             )
+
+    def test_readiness_requires_a_published_grading_service(self):
+        with self.assertRaises(ValueError):
+            check_results_ready(self.student, self.cfg)
+        git(self.teacher, "checkout", "--orphan", "results")
+        (self.teacher / "service.json").write_text(
+            json.dumps({"schema": 1, "grader": "fixture"})
+        )
+        git(self.teacher, "add", "service.json")
+        git(self.teacher, "commit", "-m", "Prepare grading service")
+        git(self.teacher, "push", "origin", "results")
+        check_results_ready(self.student, self.cfg)
+        self.assertEqual(
+            git(self.student, "branch", "--show-current").stdout.strip(), "main"
+        )
 
     def test_submission_preflight_does_not_create_a_remote_branch(self):
         enroll(self.student, self.cfg, "p01")

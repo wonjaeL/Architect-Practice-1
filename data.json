@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "id": "20261116-070516-808874-a0c457ec",
+    "participant": "audit-e2e-20261116",
+    "grade": {
+      "run_id": "20261116-070516-808874-a0c457ec",
+      "participant": "audit-e2e-20261116",
+      "artifact_blob": "0a5c853c621902478dcbc64a8f9f0f3db72aaa57",
+      "grader": "practice1-policy-v1",
+      "graded_at": "2026-11-16T07:14:40.566673+00:00",
+      "status": "passed",
+      "source_sha256": "57982d7db31a000bf853ab5e7c6c1359f3744aea770f2d356402bd823ea158dc",
+      "checks": {
+        "tests": {
+          "passed": true,
+          "tests": 110
+        },
+        "submitted_tests": {
+          "passed": true,
+          "tests": 155
+        },
+        "policy": {
+          "passed": true,
+          "tests": 24,
+          "passed_count": 24,
+          "failures": []
+        }
+      }
+    },
+    "variant": "baseline",
+    "label": "기본 작업 지침",
+    "conditions": {
+      "baseline_sha256": "8a82a76c3af6124b8ab533361037d6a468413ef98840a6c7b3dcaedc6c1bf712",
+      "codex_command": [
+        "codex"
+      ],
+      "codex_version": "codex-cli 0.169.0",
+      "model": "gpt-6-astra",
+      "profile": null,
+      "reasoning_effort": "high",
+      "request_sha256": "d37d2af4d3c6ef838e979fe9ea0d79966dd5f174b99ab51925c57a37a5538f91",
+      "test_helper_sha256": "c996fd9cb595264d650476128bd226ff33ebb94bfa2339b45df123e4b2f86693",
+      "timeout_seconds": 1800
+    },
+    "condition_id": "3f4bb9fd7f5a6033c9db4e2ccc0ea28eceaff5195bdfab56a1d7d2ddfcf601e6",
+    "execution_status": "completed",
+    "comparison_valid": false,
+    "techniques": [],
+    "note": "",
+    "usage": {
+      "input_tokens": 763131,
+      "cached_input_tokens": 716032,
+      "output_tokens": 10174
+    }
+  }
+]

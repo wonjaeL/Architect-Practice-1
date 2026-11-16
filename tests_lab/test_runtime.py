@@ -161,7 +161,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_fixed_documents_and_test_helper_are_protected(self):
         folder, summary = self.execute("changed")
-        for name in ("docs/architecture/overview.md", "tools/test_summary.py"):
+        for name in ("docs/policy/discount-policy.md", "tools/test_summary.py"):
             with self.subTest(name=name):
                 target = folder / "workspace" / name
                 original = target.read_bytes()
@@ -170,6 +170,20 @@ class RuntimeTests(unittest.TestCase):
                 runner.make_submission(self.root, folder, summary)
                 self.assertFalse(summary["comparison_valid"])
                 target.write_bytes(original)
+
+    def test_required_api_and_architecture_docs_are_valid_deliverables(self):
+        folder, summary = self.execute("changed")
+        workspace = folder / "workspace"
+        (workspace / "docs/api/cli.md").write_text("Document the new coupon option")
+        (workspace / "docs/architecture/adr/ADR-005-coupon.md").write_text(
+            "Coupon decision"
+        )
+        runner.make_submission(self.root, folder, summary)
+        self.assertTrue(summary["comparison_valid"])
+        # Instructions remain protected even under a documentation directory.
+        (workspace / "docs/api/AGENTS.md").write_text("New instructions")
+        runner.make_submission(self.root, folder, summary)
+        self.assertFalse(summary["comparison_valid"])
 
     def test_push_failure_is_saved_and_rendered(self):
         folder, summary = self.execute("changed")

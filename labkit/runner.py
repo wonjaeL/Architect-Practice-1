@@ -47,6 +47,15 @@ def protected_files(workspace: Path) -> dict:
     paths = set(workspace.rglob("AGENTS*.md"))
     for name in ["data", "docs", ".agents/skills"]:
         paths.update((workspace / name).rglob("*"))
+    # The project requires CLI docs and ADR updates when implementing a feature.
+    # Those are deliverables; operating rules and other supplied context stay fixed.
+    mutable_docs = (workspace / "docs/api", workspace / "docs/architecture")
+    paths = {
+        p
+        for p in paths
+        if not any(p.is_relative_to(directory) for directory in mutable_docs)
+        or p.name.startswith("AGENTS")
+    }
     paths.add(workspace / "tools/test_summary.py")
     return {
         p.relative_to(workspace).as_posix(): digest(p)

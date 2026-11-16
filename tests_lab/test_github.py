@@ -1,18 +1,22 @@
 """로컬 bare 저장소로 검증한다. GitHub나 LLM을 호출하지 않는다."""
 
-from pathlib import Path
 import json
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
+from labkit.common import source_digest, write_json
 from labkit.github_flow import (
+    check_submission_ready,
     enroll,
     fetch_results,
     participant,
     push_submission,
     receipt_for,
 )
+from labkit.report import eligible
+from labkit.runner import make_submission, sync_grades
 
 
 def git(folder, *args, check=True):
@@ -133,6 +137,92 @@ class GitWorkflowTests(unittest.TestCase):
                 {**self.cfg, "repository": "https://github.com/other/course.git"},
                 "p01",
             )
+
+    def test_submission_preflight_does_not_create_a_remote_branch(self):
+        enroll(self.student, self.cfg, "p01")
+        self.assertEqual(check_submission_ready(self.student, self.cfg), "students/p01")
+        self.assertNotEqual(
+            git(
+                self.remote, "rev-parse", "--verify", "students/p01", check=False
+            ).returncode,
+            0,
+        )
+
+    def test_submission_preflight_requires_git_identity(self):
+        enroll(self.student, self.cfg, "p01")
+        git(self.student, "config", "user.email", "")
+        with self.assertRaisesRegex(ValueError, "user.email"):
+            check_submission_ready(self.student, self.cfg)
+
+    def test_sync_invalidates_a_saved_grade_after_manual_resubmission(self):
+        enroll(self.student, self.cfg, "p01")
+        folder, artifact = self.artifact()
+        source = folder / "workspace/src/example.py"
+        source.parent.mkdir(parents=True)
+        source.write_text("pass\n")
+        summary = {
+            "id": folder.name,
+            "label": "fixture",
+            "execution_status": "completed",
+            "comparison_valid": True,
+            "condition_id": "fixture",
+            "source_sha256": source_digest(folder / "workspace"),
+            "usage": {"input_tokens": 100, "document_candidates": [], "calls": []},
+            "grade": {"status": "pending"},
+        }
+        write_json(folder / "summary.json", summary)
+        submitted = push_submission(self.student, folder, artifact, self.cfg)
+        git(self.teacher, "checkout", "--orphan", "results")
+        write_json(
+            self.teacher / "grades/p01" / (folder.name + ".json"),
+            {
+                "run_id": folder.name,
+                "source_sha256": summary["source_sha256"],
+                "artifact_blob": submitted["artifact_blob"],
+                "status": "passed",
+            },
+        )
+        git(self.teacher, "add", "grades")
+        git(self.teacher, "commit", "-m", "fixture grade")
+        git(self.teacher, "push", "origin", "results")
+        self.assertEqual(sync_grades(self.student, self.cfg), 1)
+        self.assertTrue(eligible(json.loads((folder / "summary.json").read_text())))
+        artifact.write_bytes(b"replacement submission")
+        # A locally changed ZIP must not borrow the committed ZIP's grade either.
+        self.assertIsNone(receipt_for(self.student, folder, self.cfg))
+        push_submission(self.student, folder, artifact, self.cfg)
+        self.assertEqual(sync_grades(self.student, self.cfg), 0)
+        saved = json.loads((folder / "summary.json").read_text())
+        self.assertEqual(saved["grade"]["status"], "pending")
+        self.assertFalse(eligible(saved))
+
+    def test_repackaging_resets_status_only_when_artifact_changes(self):
+        folder, _ = self.artifact()
+        source = folder / "workspace/src/example.py"
+        source.parent.mkdir(parents=True)
+        source.write_text("pass\n")
+        summary = {
+            "id": folder.name,
+            "protected_before": {},
+            "grade": {"status": "pending"},
+        }
+        archive = make_submission(self.student, folder, summary)
+        summary.update(
+            submission_status="submitted",
+            grade={
+                "status": "passed",
+                "artifact_blob": git(
+                    self.student, "hash-object", str(archive)
+                ).stdout.strip(),
+            },
+        )
+        make_submission(self.student, folder, summary)
+        self.assertEqual(summary["submission_status"], "submitted")
+        self.assertEqual(summary["grade"]["status"], "passed")
+        summary["note"] = "changed explanation"
+        make_submission(self.student, folder, summary)
+        self.assertEqual(summary["submission_status"], "not_submitted")
+        self.assertEqual(summary["grade"]["status"], "pending")
 
 
 if __name__ == "__main__":

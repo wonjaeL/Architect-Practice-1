@@ -11,38 +11,23 @@
 
 ## 처음 시작할 때
 
-연구원이 참여 권한을 부여한 GitHub 계정으로 저장소를 받습니다.
+연구원이 준비한 실습 폴더에서 **시작 파일 하나를 실행합니다.**
 
-```bash
-git clone https://github.com/legenduck/Architect-Practice-1.git
-cd Architect-Practice-1
-```
+| 운영체제 | 시작 방법 |
+|---|---|
+| Windows | `start.bat` 실행 |
+| macOS | `start.command` 실행 |
+| Linux | 이 폴더의 터미널에서 `./start.command` 실행 |
 
-이 README와 `lab.py`가 있는 폴더에서 터미널을 엽니다. Python 3.10 이상, Git, 사내에서 허용된 Codex CLI와 계정 로그인이 필요합니다. Codex 설치와 로그인은 연구원의 사내 환경 안내를 따릅니다. API 키를 발급하거나 입력하는 과정은 없습니다.
+시작 도구가 실습용 Python 환경과 패키지, 작업 폴더를 준비하고 실행 메뉴를 엽니다. 이미 준비된 환경은 다시 설치하지 않습니다. 처음 한 번만 본인 Codex 로그인, 배정받은 참가자 번호와 Git 제출자 정보를 확인합니다. API 키는 입력하지 않습니다. 참가자 번호와 수정한 작업 지침은 다음 실행에도 유지됩니다.
 
-macOS 또는 Linux:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-lab.txt
-python lab.py init
-python lab.py enroll p01
-```
+실행 메뉴에서 기본 지침 → Progressive disclosure → 직접 개선을 선택합니다. 다음 실험을 하려면 같은 시작 파일을 다시 실행하면 됩니다. 직접 개선할 파일은 `edit/AGENTS.md`입니다.
 
-Windows PowerShell:
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-lab.txt
-python lab.py init
-python lab.py enroll p01
-```
+**준비 오류가 나오면 아직 과제 모델을 호출하지 않은 상태입니다.** 오류 화면을 유지하고 연구원에게 요청합니다. 로그인·Git 인증·저장소 쓰기 권한은 서로 별도이며, 준비 도구가 권한을 부여하지는 않습니다.
 
-`p01`은 예시입니다. 연구원이 배정한 참가자 번호를 사용합니다. `enroll` 명령이 `students/참가자번호` 브랜치를 선택하며, 기존 코드나 지침을 지우지 않습니다. 첫 제출 전에 Git의 사용자 이름과 이메일, GitHub push 권한이 준비되어 있어야 합니다. 설정은 연구원의 사전 안내를 따릅니다.
+교육용 PC에는 Python 3.10 이상, Git과 사내 허용 Codex CLI가 필요합니다. 연구원은 수업 전에 [강사용 준비 안내](guides/instructor-setup.md)에 따라 모델과 공통 환경을 설정합니다. 패키지를 최초 설치할 때는 네트워크가 필요하므로 사전 준비를 완료해 두는 것이 좋습니다.
 
-설정이 완료된 교육용 PC에서는 연구원이 안내한 환경 활성화 이후 `python lab.py doctor`부터 확인합니다. 설치나 로그인 오류가 나면 오류 화면을 유지하고 연구원에게 요청합니다.
-
-참가자 번호는 브랜치 선택 시 `config.json`에 저장됩니다. 모델과 프로필은 연구원이 배포한 설정으로 지정하고 `python lab.py doctor`로 확인합니다. 모델을 바꾸면 이전 실행과 같은 조건의 비교가 되지 않습니다.
+아래 명령 예시는 터미널을 직접 사용하는 경우입니다. 먼저 실습 가상환경을 활성화합니다(macOS/Linux: `source .venv/bin/activate`, Windows PowerShell: `.\.venv\Scripts\Activate.ps1`). 전체 준비 상태만 다시 확인하려면 `python start.py --check`를 사용합니다.
 
 ## 기본 작업 지침으로 실행
 
@@ -92,6 +77,8 @@ python lab.py run custom --submit --wait 120
 | 명령에 나타난 문서 경로 | 명령에서 발견한 경로를 보여 줍니다. 실제 읽기 범위는 원본 명령과 함께 확인합니다. |
 | 채점 실패 | 절감 결과로 인정하지 않고 지침을 보완한 뒤 다시 실행합니다. |
 | 실행 오류 또는 측정 누락 | 기록을 유지하고 연구원에게 확인을 요청합니다. |
+
+결과 화면은 실행 상태, 제출 상태와 채점 상태를 따로 표시합니다. `실행 종료`는 기능 완성이나 채점 통과를 뜻하지 않습니다. `구현 변경 없음`, 실행 실패, 시간 초과인 기록은 자동 제출하지 않으며, 선택한 실행의 최종 응답과 원본 로그에서 원인을 확인할 수 있습니다. 측정된 사용량은 실패 기록에도 남깁니다.
 
 결과 파일은 실험 순서로 표시합니다. 다른 참가자와 순위를 비교하지 않습니다.
 

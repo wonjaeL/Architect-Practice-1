@@ -1,10 +1,11 @@
 {
-  "participant": "p01",
+  "participant": null,
   "codex_command": [
     "codex"
   ],
   "model": null,
   "profile": null,
+  "reasoning_effort": null,
   "timeout_seconds": 900,
   "repository": "https://github.com/legenduck/Architect-Practice-1.git"
 }

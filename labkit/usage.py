@@ -43,23 +43,36 @@ def parse_usage(path: Path, rollout: Path | None = None) -> dict:
     for event in records:
         kind = event.get("type")
         if kind == "thread.started":
-            thread = event.get("thread_id")
+            value = event.get("thread_id")
+            thread = value if isinstance(value, str) else None
         if kind in ("turn.failed", "error"):
             failed = True
         if kind == "turn.completed":
             usage = event.get("usage", {})
+            if not isinstance(usage, dict):
+                bad += 1
+                continue
             if valid_count(usage.get("input_tokens")) and valid_count(
                 usage.get("output_tokens")
             ):
                 totals.append(usage)
         if kind == "item.completed":
             item = event.get("item", {})
+            if not isinstance(item, dict):
+                bad += 1
+                continue
             key = item.get("id")
+            if key is not None and not isinstance(key, str):
+                bad += 1
+                continue
             if key and key in seen_items:
                 continue
             if key:
                 seen_items.add(key)
             if item.get("type") == "command_execution":
+                if not isinstance(item.get("command", ""), str):
+                    bad += 1
+                    continue
                 commands.append(
                     {
                         "command": item.get("command", ""),
@@ -78,6 +91,7 @@ def parse_usage(path: Path, rollout: Path | None = None) -> dict:
         "document_candidates": [],
         "failed_event": failed,
         "malformed_lines": bad,
+        "completed_turns": sum(e.get("type") == "turn.completed" for e in records),
     }
     # This exercise starts one new user turn. Several completed turns would need
     # explicit scope interpretation; do not silently add possibly cumulative totals.
@@ -93,10 +107,22 @@ def parse_usage(path: Path, rollout: Path | None = None) -> dict:
         previous, calls, broken = 0, [], bool(detailed_bad)
         for event in detailed:
             payload = event.get("payload", {})
-            if event.get("type") != "event_msg" or payload.get("type") != "token_count":
+            if event.get("type") != "event_msg":
+                continue
+            if not isinstance(payload, dict):
+                broken = True
+                continue
+            if payload.get("type") != "token_count":
                 continue
             info = payload.get("info") or {}
-            total = (info.get("total_token_usage") or {}).get("input_tokens")
+            if not isinstance(info, dict):
+                broken = True
+                continue
+            token_usage = info.get("total_token_usage") or {}
+            if not isinstance(token_usage, dict):
+                broken = True
+                continue
+            total = token_usage.get("input_tokens")
             if not valid_count(total):
                 continue
             if total < previous:

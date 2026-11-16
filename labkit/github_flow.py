@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -16,6 +17,8 @@ RESULTS_BRANCH = "results"
 
 
 def participant(value: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError("먼저 배정받은 참가자 번호로 실습을 시작하세요.")
     identifier = value.strip().lower()
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,31}", identifier):
         raise ValueError("참가자 번호는 p01처럼 영문 소문자와 숫자로 입력하세요.")
@@ -31,6 +34,7 @@ def git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProce
         encoding="utf-8",
         errors="replace",
         timeout=120,
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"},
     )
     if check and done.returncode:
         raise ValueError("Git 명령을 완료하지 못했습니다.\n" + done.stderr.strip())
@@ -110,6 +114,18 @@ def submission_branch(root: Path, cfg: dict) -> str:
     return branch
 
 
+def check_submission_ready(root: Path, cfg: dict) -> str:
+    """Check identity and remote access without creating a commit or remote ref."""
+    branch = submission_branch(root, cfg)
+    for key in ("user.name", "user.email"):
+        if not git(root, "config", "--get", key, check=False).stdout.strip():
+            raise ValueError(
+                f"Git {key}가 없습니다. start.py로 이름과 이메일을 설정하세요."
+            )
+    git(root, "push", "--dry-run", "--porcelain", "origin", "HEAD:refs/heads/" + branch)
+    return branch
+
+
 def push_submission(root: Path, folder: Path, archive: Path, cfg: dict) -> dict:
     branch = submission_branch(root, cfg)
     identifier = participant(cfg["participant"])
@@ -160,4 +176,7 @@ def receipt_for(root: Path, folder: Path, cfg: dict) -> dict | None:
         return (
             None  # A new submission is awaiting grading; do not reuse an older grade.
         )
+    local = git(root, "hash-object", "--", artifact, check=False)
+    if local.returncode or local.stdout.strip() != recorded.stdout.strip():
+        return None
     return receipt

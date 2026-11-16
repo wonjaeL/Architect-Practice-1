@@ -263,7 +263,7 @@ def render(records: list[dict], output: Path) -> None:
     page = (
         """<!doctype html><html lang="ko"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="30">
-<title>실습 1 전체 결과</title><style>body{font:16px/1.6 system-ui;max-width:1400px;margin:40px auto;padding:0 20px;color:#202329}table{border-collapse:collapse;width:100%}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}a{color:#305bcc}.muted{color:#666}</style>
+<title>실습 1 전체 결과</title><style>body{font:16px/1.6 system-ui;max-width:1400px;margin:40px auto;padding:0 20px;color:#202329}table{border-collapse:collapse;width:100%}th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left;word-break:keep-all}th,td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(8){white-space:nowrap}a{color:#305bcc}.muted{color:#666}</style>
 <h1>실습 1 전체 결과</h1><p>참가자별 실행 순서로 표시합니다. 순위를 매기지 않습니다.</p>
 <p>절감률은 같은 참가자·실행 조건에서 채점에 통과한 첫 기본 지침 실행과 비교합니다. 캐시 입력은 입력 총량에 이미 포함됩니다.</p>
 <p class="muted">30초마다 새로고침 · 갱신: """

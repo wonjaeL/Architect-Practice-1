@@ -2,8 +2,8 @@
   "run_id": "20261116-072217-068613-1bd88e62",
   "participant": "audit-e2e-20261116",
   "artifact_blob": "cc163a361c69288bc16527e702668a60b2f76e8e",
-  "grader": "practice1-policy-v1-7a9af2cf76cb",
-  "graded_at": "2026-11-16T07:35:36.500706+00:00",
+  "grader": "practice1-policy-v1-dbefdd9b0127",
+  "graded_at": "2026-11-16T07:42:21.047290+00:00",
   "status": "passed",
   "source_sha256": "f2595ca22ea2f9d267e32b3a90b157af307eb7ecf7a420761e90c3b4fd52d53b",
   "checks": {

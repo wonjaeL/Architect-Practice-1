@@ -104,7 +104,7 @@ python lab.py sync
 
 이 명령으로 `results` 브랜치의 채점 결과를 가져오고 `results.html`을 갱신합니다. 채점 결과는 제출 파일과 연결되어 있으므로, 수정한 새 제출에 이전 결과를 재사용하지 않습니다.
 
-- [전체 제출 현황](https://github.com/legenduck/Architect-Practice-1/tree/results)
+- [전체 결과 화면](https://legenduck.github.io/Architect-Practice-1/) · [채점 파일](https://github.com/legenduck/Architect-Practice-1/tree/results)
 - 제출 후 `main`으로 병합하거나 Pull Request를 만들 필요는 없습니다.
 - 인증이나 push 오류가 발생하면 실행 기록을 보존하고 연구원에게 확인을 요청합니다. 강제 push로 해결하지 않습니다.
 - 이 저장소는 공개되어 있습니다. 제공된 가상 과제와 실습 결과만 사용하고 회사 코드나 개인 업무 자료는 넣지 않습니다.

@@ -1,0 +1,98 @@
+name: Grade practice submissions
+on:
+  push:
+    branches: ['students/**']
+    paths: ['submissions/*.zip']
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: read
+concurrency:
+  group: practice1-grading
+  cancel-in-progress: false
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Reuse unchanged grades
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git ls-remote --exit-code --heads origin results >/dev/null; then
+            git fetch --depth=1 origin results
+            mkdir previous
+            git show FETCH_HEAD:data.json > previous/data.json || rm -f previous/data.json
+          fi
+      - name: Build isolated test environment
+        run: docker build -t practice1-grader grading
+      - name: Verify grading and learner tools
+        run: python -m unittest discover -s tests_lab -q
+      - name: Collect and grade submissions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python grading/collect.py --repository "$GITHUB_REPOSITORY" --previous previous --output site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: practice1-results
+          path: site/
+          include-hidden-files: true
+
+  publish:
+    needs: grade
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: practice1-results
+          path: /tmp/practice1-results
+      - name: Publish grade receipts
+        run: |
+          git config user.name 'practice1-grader[bot]'
+          git config user.email 'practice1-grader@users.noreply.github.com'
+          if git show-ref --verify --quiet refs/remotes/origin/results; then
+            git worktree add /tmp/practice1-publish -B results origin/results
+          else
+            git worktree add --detach /tmp/practice1-publish
+            git -C /tmp/practice1-publish switch --orphan results
+          fi
+          cp -a /tmp/practice1-results/. /tmp/practice1-publish/
+          cd /tmp/practice1-publish
+          git add --all
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update practice 1 grades and results'
+            git push origin HEAD:results
+          fi
+
+  pages:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: practice1-results
+          path: site
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deploy

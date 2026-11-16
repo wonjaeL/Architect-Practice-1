@@ -158,22 +158,51 @@ class RuntimeTests(unittest.TestCase):
                 self.assertFalse(summary["comparison_valid"])
                 target.write_bytes(original)
 
-    def test_push_preflight_failure_is_saved_and_rendered(self):
+    def test_push_failure_is_saved_and_rendered(self):
         folder, summary = self.execute("changed")
         with (
             patch(
-                "labkit.github_flow.check_submission_ready",
+                "labkit.github_flow.push_submission",
                 side_effect=ValueError("fixture denied"),
-            ),
-            patch("labkit.github_flow.push_submission") as push,
+            ) as push,
         ):
             with self.assertRaisesRegex(ValueError, "fixture denied"):
                 runner.submit_github(self.root, folder, self.cfg, summary)
-        push.assert_not_called()
+        push.assert_called_once()
         saved = read_json(folder / "summary.json")
         self.assertEqual(saved["submission_status"], "failed")
         self.assertEqual(display_status(saved)["submission"], "제출 실패")
         self.assertIn("fixture denied", (self.root / "results.html").read_text())
+
+    def test_doctor_is_short_and_keeps_diagnostics_without_starting_a_run(self):
+        output = io.StringIO()
+        with (
+            patch.object(
+                runner,
+                "execution_checks",
+                return_value=[
+                    Check(
+                        "샌드박스",
+                        False,
+                        "long diagnostic\nsecond line",
+                        "PC 설정을 확인하세요.",
+                    )
+                ],
+            ),
+            patch(
+                "labkit.github_flow.check_submission_ready",
+                return_value="students/probe",
+            ) as submission,
+            patch.object(runner, "run_process") as process,
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertFalse(runner.doctor(self.root, cfg=self.cfg))
+        self.assertIn("[FAIL] 샌드박스", output.getvalue())
+        self.assertNotIn("long diagnostic", output.getvalue())
+        self.assertIn("long diagnostic", (self.root / "doctor.log").read_text())
+        self.assertFalse(submission.call_args.kwargs["require_enrollment"])
+        process.assert_not_called()
+        self.assertFalse((self.root / "runs").exists())
 
     def test_report_escapes_diagnostics_and_links_only_existing_logs(self):
         folder, summary = self.execute("failed")

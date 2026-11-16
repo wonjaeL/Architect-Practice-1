@@ -15,6 +15,7 @@ class Check:
     name: str
     ok: bool
     detail: str = ""
+    fix: str = ""
 
 
 def command_check(name: str, command: list[str], cwd: Path) -> Check:
@@ -85,7 +86,7 @@ def sandbox_check(root: Path, cfg: dict) -> Check:
         )
         result.ok = result.ok and "PRACTICE1_SANDBOX_OK" in result.detail
         if not result.ok:
-            result.detail += "\n모델 실행 전 점검에서 중단했습니다. 서버의 샌드박스 지원 또는 교육용 PC 설정을 연구원에게 확인하세요."
+            result.fix = "이 PC의 Codex 샌드박스 설정을 연구원에게 확인하세요."
         return result
 
 
@@ -100,24 +101,26 @@ def execution_checks(
             or "강사가 start.py --prepare --model 모델명으로 먼저 설정해야 합니다.",
         )
     ]
-    checks += [
+    tools = [
         command_check(label, command, root)
         for label, command in [
             ("Python 테스트 도구", [sys.executable, "-m", "pytest", "--version"]),
+            ("테스트 커버리지", [sys.executable, "-c", "import pytest_cov"]),
             ("린트", [sys.executable, "-m", "ruff", "--version"]),
             ("타입 검사", [sys.executable, "-m", "mypy", "--version"]),
             ("Git", ["git", "--version"]),
             ("Codex", cfg["codex_command"] + ["--version"]),
         ]
     ]
-    if checks[-1].ok:
+    checks += tools
+    if tools[-1].ok:
         if include_login:
-            checks.append(
-                command_check(
-                    "Codex 로그인", cfg["codex_command"] + ["login", "status"], root
-                )
+            login = command_check(
+                "Codex 로그인", cfg["codex_command"] + ["login", "status"], root
             )
-        if all(c.ok for c in checks[1:6]):
+            login.fix = "수업 전에 안내된 Codex CLI 로그인을 완료하세요."
+            checks.append(login)
+        if all(c.ok for c in tools):
             checks.append(sandbox_check(root, cfg))
     return checks
 

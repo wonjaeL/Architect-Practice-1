@@ -52,12 +52,12 @@ def answer(prompt: str) -> str:
 
 def launch(root: Path, args: argparse.Namespace) -> int:
     from labkit.common import write_json
-    from labkit.github_flow import enroll, git, participant
-    from labkit.preflight import command_check
-    from labkit.runner import config, doctor, initialize
-    from labkit.runner import main as lab_main
+    from labkit.github_flow import enroll, participant
+    from labkit.runner import config, doctor, initialize, run_menu
 
     cfg = config(root)
+    if args.participant:
+        cfg["participant"] = participant(args.participant)
     if args.model:
         if not args.prepare:
             raise ValueError("모델 변경은 강사용 --prepare에서만 지정하세요.")
@@ -73,58 +73,28 @@ def launch(root: Path, args: argparse.Namespace) -> int:
             )
         write_json(root / "config.json", cfg)
         initialize(root)
-        ok = doctor(root, include_login=False)
+        ok = doctor(root, submission=False, include_login=False)
         if ok:
             print(
-                "공통 환경 준비 완료. 수강생은 시작 파일을 실행해 본인 로그인·참가자 번호·Git 제출 준비를 확인합니다."
+                "공통 환경 준비 완료. 개인 PC에서 python start.py doctor로 확인하세요."
             )
         return 0 if ok else 1
-    initialize(root)
-    if args.check:
-        return 0 if doctor(root, submission=True) else 1
-    if not cfg["model"]:
-        raise ValueError(
-            "강사용 모델 설정이 없습니다. 연구원이 start.py --prepare --model 모델명으로 먼저 준비해야 합니다."
-        )
-    # Fail on host incompatibilities before asking a learner to authenticate.
-    if not doctor(root, include_login=False):
+    if args.action == "doctor" or args.check:
+        return 0 if doctor(root, cfg=cfg) else 1
+    if not doctor(root, cfg=cfg):
         return 1
-    login = command_check(
-        "Codex 로그인", cfg["codex_command"] + ["login", "status"], root
-    )
-    if not login.ok:
-        print("Codex 로그인 화면을 엽니다. 본인 계정으로 로그인해 주세요.")
-        subprocess.run(cfg["codex_command"] + ["login"], cwd=root, check=True)
-        login = command_check(
-            "Codex 로그인", cfg["codex_command"] + ["login", "status"], root
-        )
-        if not login.ok:
-            raise ValueError("Codex 로그인을 확인하지 못했습니다. " + login.detail)
-    identifier = participant(
-        args.participant or cfg.get("participant") or answer("배정받은 참가자 번호: ")
-    )
-    for key, prompt in [
-        ("user.name", "Git 제출에 사용할 이름: "),
-        ("user.email", "Git 제출에 사용할 이메일: "),
-    ]:
-        if not git(root, "config", "--get", key, check=False).stdout.strip():
-            git(root, "config", "--local", key, answer(prompt))
+    identifier = participant(cfg.get("participant") or answer("배정받은 참가자 번호: "))
     print("실습 브랜치:", enroll(root, cfg, identifier))
-    from labkit.github_flow import check_submission_ready
-
-    print("제출 준비 확인:", check_submission_ready(root, cfg))
-    print("준비 완료. 실행할 실습을 선택하세요.")
-    previous = sys.argv
-    try:
-        sys.argv = [str(root / "lab.py")]
-        lab_main()
-    finally:
-        sys.argv = previous
+    initialize(root)
+    run_menu(root, ready_config=cfg)
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "action", nargs="?", choices=["doctor"], help="실습 준비 상태 확인"
+    )
     parser.add_argument(
         "--prepare",
         action="store_true",
@@ -135,13 +105,11 @@ def main(argv: list[str] | None = None) -> int:
         "--reasoning-effort", choices=["minimal", "low", "medium", "high", "xhigh"]
     )
     parser.add_argument("--participant", help="이미 배정받은 참가자 번호")
-    parser.add_argument(
-        "--check", action="store_true", help="현재 실행·제출 준비 상태만 확인"
-    )
+    parser.add_argument("--check", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--bootstrapped", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    if args.prepare and args.check:
-        parser.error("--prepare와 --check 중 하나를 선택하세요.")
+    if args.prepare and (args.check or args.action):
+        parser.error("--prepare와 doctor 중 하나를 선택하세요.")
     try:
         if not args.bootstrapped:
             python = bootstrap(ROOT)

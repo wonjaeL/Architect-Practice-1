@@ -22,7 +22,7 @@ from .common import (
     source_digest,
     write_json,
 )
-from .preflight import execution_checks, require_checks
+from .preflight import Check, execution_checks, require_checks
 from .report import render_report
 from .usage import parse_usage
 
@@ -319,7 +319,7 @@ def sync_grades(root: Path, cfg: dict) -> int:
 def submit_github(
     root: Path, folder: Path, cfg: dict, summary: dict, wait_seconds: int = 0
 ) -> None:
-    from .github_flow import check_submission_ready, push_submission
+    from .github_flow import push_submission
 
     if summary.get("execution_status") != "completed":
         raise ValueError(
@@ -340,7 +340,6 @@ def submit_github(
 
     archive = make_submission(root, folder, summary)
     try:
-        check_submission_ready(root, cfg)
         status = push_submission(root, folder, archive, cfg)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         summary.update(submission_status="failed", submission_error=str(error))
@@ -377,10 +376,11 @@ def apply_grade(summary: dict, receipt: dict) -> None:
     summary["grade"] = receipt
 
 
-def execute(root: Path, variant: str, cfg: dict) -> Path:
+def execute(root: Path, variant: str, cfg: dict, *, prechecked: bool = False) -> Path:
     if not cfg["model"]:
         raise ValueError("config.json의 model을 연구원이 지정한 값으로 설정하세요.")
-    require_checks(execution_checks(root, cfg))
+    if not prechecked:
+        require_checks(execution_checks(root, cfg))
     folder, summary = prepare_run(root, variant, cfg)
     started = time.monotonic()
     command = list(cfg["codex_command"])
@@ -511,31 +511,120 @@ def get_run(root: Path, run_id: str) -> Path:
     return folder
 
 
-def doctor(root: Path, *, submission: bool = False, include_login: bool = True) -> bool:
-    cfg = config(root)
+def doctor(
+    root: Path,
+    *,
+    cfg: dict | None = None,
+    submission: bool = True,
+    include_login: bool = True,
+) -> bool:
+    cfg = config(root) if cfg is None else cfg
     checks = execution_checks(root, cfg, include_login=include_login)
-    for check in checks:
-        print("확인" if check.ok else "확인 필요", check.name, check.detail)
-    ok = all(check.ok for check in checks)
     if submission:
         from .github_flow import check_submission_ready
 
         try:
-            print("제출 준비 확인:", check_submission_ready(root, cfg))
+            check_submission_ready(root, cfg, require_enrollment=False)
+            checks.append(Check("Git 제출 접속", True))
         except (OSError, ValueError, subprocess.SubprocessError) as error:
-            print("제출 준비 확인 필요:", error)
-            ok = False
-    print("제출 저장소:", cfg["repository"])
-    print("채점 결과: results 브랜치에서 python lab.py sync로 가져옵니다.")
+            checks.append(
+                Check(
+                    "Git 제출 접속",
+                    False,
+                    str(error),
+                    "Git 인증·제출자 정보와 저장소 참여 설정을 확인하세요.",
+                )
+            )
+    for check in checks:
+        print("[OK]" if check.ok else "[FAIL]", check.name)
+        if not check.ok:
+            hint = check.fix or next(
+                iter(check.detail.splitlines()), "doctor.log를 확인하세요."
+            )
+            print("  " + hint[:180])
+    (root / "doctor.log").write_text(
+        "\n\n".join(
+            f"{'OK' if c.ok else 'FAIL'} {c.name}\n{c.detail}\n{c.fix}" for c in checks
+        ),
+        encoding="utf-8",
+    )
+    ok = all(check.ok for check in checks)
+    print(
+        "준비 완료. 시작 파일을 실행하면 실습 메뉴가 열립니다."
+        if ok
+        else "준비 확인이 필요합니다. 상세 내용: doctor.log"
+    )
     return ok
+
+
+def run_menu(root: Path, *, ready_config: dict | None = None) -> None:
+    from .github_flow import submission_branch
+
+    ready_config = dict(ready_config) if ready_config is not None else None
+    while True:
+        print(
+            "\n1 기본 지침 실행·제출\n2 Progressive disclosure 실행·제출\n3 직접 개선 실행·제출\n4 결과 보기\n5 최근 실행 제출·재제출\n6 채점 결과 가져오기\n7 doctor\n0 종료"
+        )
+        try:
+            choice = input("번호: ").strip()
+            if choice == "0":
+                return
+            cfg = config(root)
+            if choice in ("1", "2", "3"):
+                submission_branch(root, cfg)
+                if cfg != ready_config:
+                    if not doctor(root, cfg=cfg):
+                        continue
+                    ready_config = dict(cfg)
+                folder = execute(
+                    root,
+                    ["baseline", "disclosure", "custom"][int(choice) - 1],
+                    cfg,
+                    prechecked=True,
+                )
+                summary = read_json(folder / "summary.json")
+                if summary["execution_status"] == "completed":
+                    submit_github(root, folder, cfg, summary)
+                    print("6번으로 채점 결과를 가져오세요.")
+                else:
+                    ready_config = None
+            elif choice == "5":
+                folder = get_run(root, "latest")
+                summary = read_json(folder / "summary.json")
+                techniques = input("적용한 기법(쉼표 구분, Enter로 유지): ").strip()
+                note = input("변경 내용(Enter로 유지): ").strip()
+                if techniques:
+                    summary["techniques"] = [
+                        x.strip() for x in techniques.split(",") if x.strip()
+                    ]
+                if note:
+                    summary["note"] = note
+                submit_github(root, folder, cfg, summary)
+            elif choice == "6":
+                print("반영한 채점 결과:", sync_grades(root, cfg))
+            elif choice == "7":
+                ready_config = dict(cfg) if doctor(root, cfg=cfg) else None
+                continue
+            elif choice != "4":
+                print("0~7 중에서 선택하세요.")
+                continue
+            webbrowser.open(render_report(root).as_uri())
+        except EOFError:
+            return
+        except KeyboardInterrupt:
+            print("취소했습니다. 메뉴에서 이어서 진행할 수 있습니다.")
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+            ready_config = None
+            print(
+                f"확인 필요: {error}\n기록은 보존했습니다. 해결 후 메뉴에서 다시 시도하세요."
+            )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action")
     sub.add_parser("init")
-    doctor_parser = sub.add_parser("doctor")
-    doctor_parser.add_argument("--submission", action="store_true")
+    sub.add_parser("doctor")
     sub.add_parser("report")
     enrollment = sub.add_parser("enroll")
     enrollment.add_argument("participant")
@@ -556,38 +645,7 @@ def main() -> None:
     try:
         if args.action is None:
             initialize(root)
-            print(
-                "1 기본 작업 지침 실행 후 제출\n2 Progressive disclosure 실행 후 제출\n3 직접 개선한 지침 실행 후 제출\n4 결과 화면 열기\n5 최근 실행의 기법과 설명 제출\n6 중앙 채점 결과 가져오기"
-            )
-            choice = input("번호: ").strip()
-            if choice in ("1", "2", "3"):
-                from .github_flow import check_submission_ready
-
-                cfg = config(root)
-                check_submission_ready(root, cfg)
-                folder = execute(
-                    root,
-                    ["baseline", "disclosure", "custom"][int(choice) - 1],
-                    cfg,
-                )
-                summary = read_json(folder / "summary.json")
-                if summary["execution_status"] == "completed":
-                    submit_github(root, folder, cfg, summary, 120)
-            elif choice == "5":
-                folder = get_run(root, "latest")
-                summary = read_json(folder / "summary.json")
-                summary["techniques"] = [
-                    x.strip()
-                    for x in input("적용한 기법(쉼표로 구분): ").split(",")
-                    if x.strip()
-                ]
-                summary["note"] = input("변경한 내용: ")
-                submit_github(root, folder, config(root), summary, 120)
-            elif choice == "6":
-                print("반영한 채점 결과:", sync_grades(root, config(root)))
-            elif choice != "4":
-                raise ValueError("1~6 중에서 선택하세요.")
-            webbrowser.open(render_report(root).as_uri())
+            run_menu(root)
         elif args.action == "init":
             initialize(root)
         elif args.action == "enroll":
@@ -597,7 +655,7 @@ def main() -> None:
         elif args.action == "sync":
             print("반영한 채점 결과:", sync_grades(root, config(root)))
         elif args.action == "doctor":
-            sys.exit(0 if doctor(root, submission=args.submission) else 1)
+            sys.exit(0 if doctor(root) else 1)
         elif args.action == "run":
             if args.submit:
                 from .github_flow import check_submission_ready

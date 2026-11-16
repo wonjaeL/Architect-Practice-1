@@ -154,6 +154,38 @@ class GitWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "user.email"):
             check_submission_ready(self.student, self.cfg)
 
+    def test_doctor_can_check_submission_before_participant_enrollment(self):
+        cfg = {**self.cfg, "participant": None}
+        self.assertTrue(
+            check_submission_ready(
+                self.student, cfg, require_enrollment=False
+            ).startswith("students/doctor-")
+        )
+        self.assertIsNone(cfg["participant"])
+        self.assertEqual(
+            git(self.student, "branch", "--show-current").stdout.strip(), "main"
+        )
+        self.assertEqual(
+            git(
+                self.remote, "for-each-ref", "--format=%(refname)", "refs/heads"
+            ).stdout.strip(),
+            "refs/heads/main",
+        )
+
+    def test_doctor_does_not_overwrite_an_existing_participant_branch(self):
+        enroll(self.student, self.cfg, "p01")
+        folder, archive = self.artifact()
+        submitted = push_submission(self.student, folder, archive, self.cfg)
+        git(self.student, "switch", "main")
+        check_submission_ready(self.student, self.cfg, require_enrollment=False)
+        self.assertEqual(
+            git(self.student, "branch", "--show-current").stdout.strip(), "main"
+        )
+        self.assertEqual(
+            git(self.remote, "rev-parse", "students/p01").stdout.strip(),
+            submitted["commit"],
+        )
+
     def test_sync_invalidates_a_saved_grade_after_manual_resubmission(self):
         enroll(self.student, self.cfg, "p01")
         folder, artifact = self.artifact()

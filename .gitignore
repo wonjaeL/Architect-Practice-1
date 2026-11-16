@@ -9,5 +9,6 @@ config.json
 edit/
 runs/
 results.html
+doctor.log
 .coverage
 *.egg-info/

@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import start
-from labkit.preflight import Check
 
 
 class StartupTests(unittest.TestCase):
@@ -54,9 +53,7 @@ class StartupTests(unittest.TestCase):
         )
         (self.root / "edit").mkdir()
         (self.root / "edit/AGENTS.md").write_text("learner work")
-        args = argparse.Namespace(
-            prepare=True, model="course-model", reasoning_effort="high", check=False
-        )
+        args = self.args(prepare=True, model="course-model", reasoning_effort="high")
         with (
             patch("labkit.runner.doctor", return_value=True),
             contextlib.redirect_stdout(io.StringIO()),
@@ -67,19 +64,31 @@ class StartupTests(unittest.TestCase):
         self.assertEqual(cfg["model"], "course-model")
         self.assertEqual((self.root / "edit/AGENTS.md").read_text(), "learner work")
 
-    def test_host_failure_stops_before_login_or_enrollment(self):
-        (self.root / "config.json").write_text(json.dumps({"model": "course-model"}))
-        args = argparse.Namespace(
-            prepare=False, model=None, reasoning_effort=None, check=False
+    def args(self, **changes):
+        return argparse.Namespace(
+            **{
+                "action": None,
+                "prepare": False,
+                "model": None,
+                "reasoning_effort": None,
+                "check": False,
+                "participant": None,
+                **changes,
+            }
         )
+
+    def test_failed_doctor_stops_before_any_account_setup_or_enrollment(self):
+        (self.root / "config.json").write_text(json.dumps({"model": "course-model"}))
         with (
             patch("labkit.runner.initialize"),
             patch("labkit.runner.doctor", return_value=False),
-            patch("labkit.preflight.command_check") as login,
+            patch("start.subprocess.run") as process,
+            patch("start.answer") as prompt,
             patch("labkit.github_flow.enroll") as enroll,
         ):
-            self.assertEqual(start.launch(self.root, args), 1)
-        login.assert_not_called()
+            self.assertEqual(start.launch(self.root, self.args()), 1)
+        process.assert_not_called()
+        prompt.assert_not_called()
         enroll.assert_not_called()
 
     def test_noninteractive_missing_identity_does_not_hang(self):
@@ -91,35 +100,38 @@ class StartupTests(unittest.TestCase):
         (self.root / "config.json").write_text(
             json.dumps({"participant": "p17", "model": "course-model"})
         )
-        args = argparse.Namespace(
-            prepare=False,
-            model=None,
-            reasoning_effort=None,
-            check=False,
-            participant=None,
-        )
         with (
             patch("labkit.runner.initialize"),
-            patch("labkit.runner.doctor", return_value=True),
-            patch("labkit.preflight.command_check", return_value=Check("login", True)),
-            patch(
-                "labkit.github_flow.git",
-                return_value=subprocess.CompletedProcess([], 0, stdout="configured"),
-            ),
+            patch("labkit.runner.doctor", return_value=True) as doctor,
             patch("labkit.github_flow.enroll", return_value="students/p17") as enroll,
-            patch(
-                "labkit.github_flow.check_submission_ready", return_value="students/p17"
-            ),
-            patch("labkit.runner.main") as menu,
+            patch("labkit.runner.run_menu") as menu,
+            patch("start.subprocess.run") as process,
             patch("start.answer") as prompt,
             contextlib.redirect_stdout(io.StringIO()),
         ):
-            self.assertEqual(start.launch(self.root, args), 0)
-            self.assertEqual(start.launch(self.root, args), 0)
+            self.assertEqual(start.launch(self.root, self.args()), 0)
+            self.assertEqual(start.launch(self.root, self.args()), 0)
         prompt.assert_not_called()
+        process.assert_not_called()
         self.assertEqual(enroll.call_count, 2)
         self.assertEqual(enroll.call_args.args[2], "p17")
         self.assertEqual(menu.call_count, 2)
+        self.assertEqual(doctor.call_count, 2)
+        self.assertEqual(menu.call_args.kwargs["ready_config"]["participant"], "p17")
+
+    def test_doctor_command_does_not_initialize_or_enroll(self):
+        with (
+            patch("start.ROOT", self.root),
+            patch("labkit.runner.doctor", return_value=False) as doctor,
+            patch("labkit.runner.initialize") as initialize,
+            patch("labkit.github_flow.enroll") as enroll,
+            patch("start.answer") as prompt,
+        ):
+            self.assertEqual(start.main(["--bootstrapped", "doctor"]), 1)
+        doctor.assert_called_once()
+        initialize.assert_not_called()
+        enroll.assert_not_called()
+        prompt.assert_not_called()
 
 
 if __name__ == "__main__":

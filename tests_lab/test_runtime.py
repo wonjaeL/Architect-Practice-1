@@ -206,6 +206,7 @@ class RuntimeTests(unittest.TestCase):
                 "labkit.github_flow.check_submission_ready",
                 return_value="students/probe",
             ) as submission,
+            patch("labkit.github_flow.check_results_ready"),
             patch.object(runner, "run_process") as process,
             contextlib.redirect_stdout(output),
         ):

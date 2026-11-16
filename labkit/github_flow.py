@@ -182,6 +182,19 @@ def fetch_results(root: Path, cfg: dict) -> None:
     )
 
 
+def check_results_ready(root: Path, cfg: dict) -> None:
+    """Verify the instructor has run the publisher before students start."""
+    fetch_results(root, cfg)
+    response = git(root, "show", "origin/results:service.json", check=False)
+    if response.returncode:
+        raise ValueError(
+            "강사가 자동 채점을 한 번 실행해 결과 수신 경로를 준비해야 합니다."
+        )
+    service = json.loads(response.stdout)
+    if service.get("schema") != 1 or not service.get("grader"):
+        raise ValueError("채점 서비스 정보가 올바르지 않습니다.")
+
+
 def receipt_for(root: Path, folder: Path, cfg: dict) -> dict | None:
     identifier = participant(cfg["participant"])
     path = f"grades/{identifier}/{folder.name}.json"

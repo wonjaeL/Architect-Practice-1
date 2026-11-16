@@ -534,7 +534,7 @@ def doctor(
     cfg = config(root) if cfg is None else cfg
     checks = execution_checks(root, cfg, include_login=include_login)
     if submission:
-        from .github_flow import check_submission_ready
+        from .github_flow import check_results_ready, check_submission_ready
 
         try:
             check_submission_ready(root, cfg, require_enrollment=False)
@@ -546,6 +546,18 @@ def doctor(
                     False,
                     str(error),
                     "Git 인증·제출자 정보와 저장소 참여 설정을 확인하세요.",
+                )
+            )
+        try:
+            check_results_ready(root, cfg)
+            checks.append(Check("Git 채점 결과 수신 경로", True))
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            checks.append(
+                Check(
+                    "Git 채점 결과 수신 경로",
+                    False,
+                    str(error),
+                    "강사가 Actions의 Grade practice submissions를 먼저 실행해야 합니다.",
                 )
             )
     for check in checks:
